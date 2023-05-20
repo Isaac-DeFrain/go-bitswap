@@ -40,6 +40,11 @@ func (sw *sessionWants) String() string {
 
 // BlocksRequested is called when the client makes a request for blocks
 func (sw *sessionWants) BlocksRequested(newWants []cid.Cid) {
+	// TODO upper bound
+	if len(newWants) > 10_000 {
+		return
+	}
+
 	for _, k := range newWants {
 		sw.toFetch.Push(k)
 	}
@@ -84,11 +89,13 @@ func (sw *sessionWants) WantsSent(ks []cid.Cid) {
 // measures latency. It returns the CIDs of blocks that were actually
 // wanted (as opposed to duplicates) and the total latency for all incoming blocks.
 func (sw *sessionWants) BlocksReceived(ks []cid.Cid) ([]cid.Cid, time.Duration) {
+	// TODO upper bound
+	if len(ks) == 0 || len(ks) > 10_000 {
+		return make([]cid.Cid, 0), time.Duration(0)
+	}
+
 	wanted := make([]cid.Cid, 0, len(ks))
 	totalLatency := time.Duration(0)
-	if len(ks) == 0 {
-		return wanted, totalLatency
-	}
 
 	// Filter for blocks that were actually wanted (as opposed to duplicates)
 	now := time.Now()

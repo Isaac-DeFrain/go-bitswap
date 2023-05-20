@@ -307,6 +307,11 @@ func (s *Session) run(ctx context.Context) {
 				s.handleReceive(oper.keys)
 			case opWant:
 				// Client wants blocks
+				// TODO upper bound
+				if len(oper.keys) > 10_000 {
+					s.shutdown()
+					return
+				}
 				s.wantBlocks(ctx, oper.keys)
 			case opCancel:
 				// Wants were cancelled
@@ -438,6 +443,12 @@ func (s *Session) handleReceive(ks []cid.Cid) {
 
 // wantBlocks is called when blocks are requested by the client
 func (s *Session) wantBlocks(ctx context.Context, newks []cid.Cid) {
+	// TODO upper bound
+	if len(newks) > 10_000 {
+		s.shutdown()
+		return
+	}
+
 	if len(newks) > 0 {
 		// Inform the SessionInterestManager that this session is interested in the keys
 		s.sim.RecordSessionInterest(s.id, newks)
@@ -470,10 +481,10 @@ func (s *Session) broadcastWantHaves(ctx context.Context, wants []cid.Cid) {
 // The session will broadcast if it has outstanding wants and doesn't receive
 // any blocks for some time.
 // The length of time is calculated
-// - initially
-//   as a fixed delay
-// - once some blocks are received
-//   from a base delay and average latency, with a backoff
+//   - initially
+//     as a fixed delay
+//   - once some blocks are received
+//     from a base delay and average latency, with a backoff
 func (s *Session) resetIdleTick() {
 	var tickDelay time.Duration
 	if !s.latencyTrkr.hasLatency() {
